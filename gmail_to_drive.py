@@ -26,8 +26,10 @@ First-run setup:
 Options:
   --labels          Comma-separated list of label names to export (default: all user labels)
   --max-per-label   Emails per label, 1–100 (default: 100, maximum: 100)
-  --skip-system     Skip system labels like INBOX, SENT, SPAM (default: True)
   --drive-root      Name of the root folder in Drive (default: "Gmail Export")
+
+Note: Only user-created labels are exported. System labels (INBOX, SENT, SPAM,
+TRASH, UNREAD, STARRED, etc.) are always excluded.
 """
 
 import argparse
@@ -100,13 +102,11 @@ def get_google_service():
 # Gmail helpers
 # ---------------------------------------------------------------------------
 
-def list_labels(gmail_service, skip_system=True):
-    """Return list of label dicts. Filter system labels if requested."""
+def list_labels(gmail_service):
+    """Return only user-created label dicts (never system labels)."""
     result = gmail_service.users().labels().list(userId="me").execute()
     labels = result.get("labels", [])
-    if skip_system:
-        labels = [l for l in labels if l.get("type") == "user"]
-    return labels
+    return [l for l in labels if l.get("type") == "user"]
 
 
 def list_messages_for_label(gmail_service, label_id, max_results=100):
@@ -334,8 +334,8 @@ def run(args):
     root_id = find_or_create_folder(drive, args.drive_root)
     print(f"Drive root folder '{args.drive_root}' ready (id={root_id})")
 
-    # Get labels to export
-    all_labels = list_labels(gmail, skip_system=args.skip_system)
+    # Get labels to export (user-created only; system labels always excluded)
+    all_labels = list_labels(gmail)
 
     if args.labels:
         wanted = {l.strip().lower() for l in args.labels.split(",")}
@@ -389,8 +389,9 @@ def parse_args():
             Options summary:
               --labels          Comma-separated label names to export (default: all user labels)
               --max-per-label   Emails to export per label, 1-{MAX_EMAILS_PER_LABEL} (default: {MAX_EMAILS_PER_LABEL})
-              --no-skip-system  Also export system labels: INBOX, SENT, SPAM, etc.
               --drive-root      Root folder name in Google Drive (default: "Gmail Export")
+
+            Note: System labels (INBOX, SENT, SPAM, TRASH, etc.) are always excluded.
 
             Examples:
               # Export all user labels (up to {MAX_EMAILS_PER_LABEL} emails each)
@@ -402,14 +403,11 @@ def parse_args():
               # Export 50 emails per label instead of the default {MAX_EMAILS_PER_LABEL}
               python gmail_to_drive.py --max-per-label 50
 
-              # Include system labels (INBOX, SENT, SPAM, etc.) in the export
-              python gmail_to_drive.py --no-skip-system
-
               # Save to a custom folder name in Drive
               python gmail_to_drive.py --drive-root "My Gmail Archive"
 
               # Combine options
-              python gmail_to_drive.py --labels "Books,Health" --max-per-label 50 --no-skip-system
+              python gmail_to_drive.py --labels "Books,Health" --max-per-label 50
             """
         ),
     )
@@ -430,19 +428,6 @@ def parse_args():
             f"Maximum emails to export per label, between 1 and {MAX_EMAILS_PER_LABEL} "
             f"(default: {MAX_EMAILS_PER_LABEL})."
         ),
-    )
-    parser.add_argument(
-        "--skip-system",
-        action="store_true",
-        default=True,
-        dest="skip_system",
-        help="Skip system labels like INBOX, SENT, SPAM (default: True).",
-    )
-    parser.add_argument(
-        "--no-skip-system",
-        action="store_false",
-        dest="skip_system",
-        help="Include system labels (INBOX, SENT, SPAM, etc.) in the export.",
     )
     parser.add_argument(
         "--drive-root",
