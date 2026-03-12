@@ -25,7 +25,7 @@ First-run setup:
 
 Options:
   --labels          Comma-separated list of label names to export (default: all user labels)
-  --max-per-label   Max emails per label (default: 100)
+  --max-per-label   Emails per label, 1–100 (default: 100, maximum: 100)
   --skip-system     Skip system labels like INBOX, SENT, SPAM (default: True)
   --drive-root      Name of the root folder in Drive (default: "Gmail Export")
 """
@@ -365,41 +365,71 @@ def run(args):
 # Entry point
 # ---------------------------------------------------------------------------
 
+MAX_EMAILS_PER_LABEL = 100
+
+
+def _capped_int(value):
+    """Argument type that accepts integers 1–100 only."""
+    n = int(value)
+    if n < 1:
+        raise argparse.ArgumentTypeError("Value must be at least 1.")
+    if n > MAX_EMAILS_PER_LABEL:
+        raise argparse.ArgumentTypeError(
+            f"Maximum allowed is {MAX_EMAILS_PER_LABEL} emails per label."
+        )
+    return n
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Export Gmail label emails & links to Google Drive.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
-            """\
+            f"""\
+            Options summary:
+              --labels          Comma-separated label names to export (default: all user labels)
+              --max-per-label   Emails to export per label, 1-{MAX_EMAILS_PER_LABEL} (default: {MAX_EMAILS_PER_LABEL})
+              --no-skip-system  Also export system labels: INBOX, SENT, SPAM, etc.
+              --drive-root      Root folder name in Google Drive (default: "Gmail Export")
+
             Examples:
-              # Export all user labels (default, up to 100 emails each)
+              # Export all user labels (up to {MAX_EMAILS_PER_LABEL} emails each)
               python gmail_to_drive.py
 
-              # Export only Books and AI labels
-              python gmail_to_drive.py --labels "Books,AI"
+              # Export only the Books, AI, and Health labels
+              python gmail_to_drive.py --labels "Books,AI,Health"
 
-              # Export up to 500 emails per label
-              python gmail_to_drive.py --max-per-label 500
+              # Export 50 emails per label instead of the default {MAX_EMAILS_PER_LABEL}
+              python gmail_to_drive.py --max-per-label 50
 
-              # Include system labels (INBOX, SENT, etc.) too
+              # Include system labels (INBOX, SENT, SPAM, etc.) in the export
               python gmail_to_drive.py --no-skip-system
 
-              # Custom Drive root folder name
+              # Save to a custom folder name in Drive
               python gmail_to_drive.py --drive-root "My Gmail Archive"
+
+              # Combine options
+              python gmail_to_drive.py --labels "Books,Health" --max-per-label 50 --no-skip-system
             """
         ),
     )
     parser.add_argument(
         "--labels",
         default="",
-        help="Comma-separated label names to export. Default: all user labels.",
+        help=(
+            "Comma-separated label names to export (e.g. \"Books,AI,Health\"). "
+            "Default: all user labels."
+        ),
     )
     parser.add_argument(
         "--max-per-label",
-        type=int,
-        default=100,
+        type=_capped_int,
+        default=MAX_EMAILS_PER_LABEL,
         dest="max_per_label",
-        help="Maximum number of emails to export per label (default: 100).",
+        help=(
+            f"Maximum emails to export per label, between 1 and {MAX_EMAILS_PER_LABEL} "
+            f"(default: {MAX_EMAILS_PER_LABEL})."
+        ),
     )
     parser.add_argument(
         "--skip-system",
@@ -412,7 +442,7 @@ def parse_args():
         "--no-skip-system",
         action="store_false",
         dest="skip_system",
-        help="Include system labels in the export.",
+        help="Include system labels (INBOX, SENT, SPAM, etc.) in the export.",
     )
     parser.add_argument(
         "--drive-root",

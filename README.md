@@ -50,28 +50,31 @@ python gmail_to_drive.py [options]
 
 | Option | Default | Description |
 |---|---|---|
-| `--labels "Books,AI"` | all user labels | Comma-separated label names to export |
-| `--max-per-label 500` | `100` | Max emails per label |
+| `--labels "Books,AI,Health"` | all user labels | Comma-separated label names to export |
+| `--max-per-label 50` | `100` | Emails per label, between 1 and 100 (maximum: 100) |
 | `--no-skip-system` | off | Also export INBOX, SENT, SPAM, etc. |
 | `--drive-root "My Archive"` | `Gmail Export` | Root folder name in Google Drive |
 
 ### Examples
 
 ```bash
-# Export everything (all user labels, 100 emails each)
+# Export everything (all user labels, up to 100 emails each)
 python gmail_to_drive.py
 
-# Export only Books and AI labels
-python gmail_to_drive.py --labels "Books,AI"
+# Export only the Books, AI, and Health labels
+python gmail_to_drive.py --labels "Books,AI,Health"
 
-# Export up to 500 emails per label
-python gmail_to_drive.py --max-per-label 500
+# Export 50 emails per label instead of the default 100
+python gmail_to_drive.py --max-per-label 50
 
-# Include system labels too
+# Include system labels (INBOX, SENT, SPAM, etc.) in the export
 python gmail_to_drive.py --no-skip-system
 
-# Custom Drive folder name
+# Save to a custom folder name in Drive
 python gmail_to_drive.py --drive-root "My Gmail Archive"
+
+# Combine options
+python gmail_to_drive.py --labels "Books,Health" --max-per-label 50 --no-skip-system
 ```
 
 ---
